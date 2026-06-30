@@ -1,66 +1,84 @@
-# PaperMC/Spigot Minecraft Server Plugin Template
-A template for building PaperMC/Spigot Minecraft server plugins!
+# KillRatio
 
-<!-- TODO: CHANGE ME -->
-[![](https://github.com/CrimsonWarpedcraft/plugin-template/actions/workflows/main.yml/badge.svg)](https://github.com/CrimsonWarpedcraft/plugin-template/actions/workflows/main.yml)
+A Paper plugin that tracks per-player PvP kill and death statistics and exposes them through [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/).
 
-<!-- TODO: CHANGE ME -->
-[![](https://dcbadge.limes.pink/api/server/5XMmeV6EtJ)](https://discord.gg/5XMmeV6EtJ)
+## Requirements
 
-## Features
-### Github Actions 🎬
-* Automated builds, testing, and release drafting
-* [Discord notifcations](https://github.com/marketplace/actions/discord-message-notify) for snapshots and releases
+- Paper 1.18.2+
+- [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) (optional — placeholders are disabled without it)
 
-### Bots 🤖
-* **Probot: Stale**
-    * Mark issues stale after 30 days
-* **Dependabot**
-    * Update GitHub Actions workflows
-    * Update Gradle dependencies
+## Installation
 
-### Issue Templates 📋
-* Bug report template
-* Feature request template
+1. Drop `KillRatio.jar` into your `plugins/` folder.
+2. Restart the server.
+3. Stats are saved automatically every 5 minutes and on server shutdown.
 
-### Gradle Builds 🏗
-* Shadowed plugin dependencies
-* [Checkstyle](https://checkstyle.org/) Google standard style check
-* [SpotBugs](https://spotbugs.github.io/) code analysis
+## Configuration
 
-### Testing 🧪
-* [JUnit 5](https://junit.org/) unit tests
-* [Mockito](https://site.mockito.org/) for mocking dependencies in unit tests
+`plugins/KillRatio/config.yml`:
 
-### Example Plugin Code 🔌
-* `/example` command via [CommandAPI](https://commandapi.jorel.dev) demonstrating subcommands, tab completion, and permissions
-* Example config loading and validation via [cw-commons](https://github.com/CrimsonWarpedcraft/cw-commons)' `ConfigManager`, backed by [Jackson](https://github.com/fasterxml/jackson) and [Hibernate Validator](https://hibernate.org/validator/)
-* Example persistent per-player data storage via cw-commons' `Repository`/`PlayerDataManager`, demonstrated by `/example creepersKilled`: `CreeperKillListener` writes to it on each creeper kill, `CreepersKilled` reads it back
+```yaml
+# If true (default), only deaths caused directly by another player count toward %personal_deaths%.
+# Set to false to count all deaths (fall damage, mobs, etc.).
+pvp-deaths-only: true
+```
 
-### Config Files 📁
-* Sample plugin.yml with autofill name, version, and main class.
-* Example config.yml
-* Gradle build config
-* Simple .gitignore for common Gradle files
+---
 
-## Usage
-In order to use this template for yourself, there are a few things that you will need to keep in mind.
+## Placeholders
 
-- [Extending the example code](docs/usage.md) — add commands, subcommands, config fields, or persistent per-player data
-- [Customizing this template](docs/customization.md) — the one-time checklist for forking this repo (placeholders, secrets, etc.)
-- [Releases & versioning](docs/releases.md) — PaperMC compatibility, version format, and how to cut a release
-- [Agent instructions & skills](docs/skills.md) — agent guidance, Claude Code support, and available skills
+### Personal stats
 
-## Building locally
-Thanks to [Gradle](https://gradle.org/), building locally is easy no matter what platform you're on. Simply run the following command:
+These are per-player and resolve to the stats of the player requesting the placeholder.
+
+| Placeholder | Description |
+|---|---|
+| `%personal_kills%` | Total player kills |
+| `%personal_deaths%` | Total deaths (PvP-only by default, see config) |
+| `%personal_kd%` | K/D ratio formatted to 2 decimal places; shows raw kill count when deaths = 0 |
+
+---
+
+### Leaderboards
+
+Each leaderboard placeholder follows the pattern `%<identifier>_<query>%`.
+
+**Identifiers**
+
+| Identifier | Ranks by |
+|---|---|
+| `kills` / `kill` | Most kills |
+| `deaths` / `death` | Most deaths |
+| `kd` | Highest K/D ratio |
+
+**Queries**
+
+| Query | Returns |
+|---|---|
+| `top_10` | Newline-separated list of the top 10 players and their stat value |
+| `top_name` | Display name of the #1 player |
+| `top_value` | Stat value of the #1 player |
+
+**Examples**
+
+| Placeholder | Description |
+|---|---|
+| `%kills_top_10%` | Top 10 players by kill count |
+| `%kills_top_name%` | Name of the player with the most kills |
+| `%kills_top_value%` | Kill count of the #1 killer |
+| `%kd_top_10%` | Top 10 players by K/D ratio |
+| `%kd_top_name%` | Name of the player with the highest K/D |
+| `%kd_top_value%` | K/D ratio of the #1 player |
+| `%deaths_top_10%` | Top 10 players by death count |
+| `%deaths_top_name%` | Name of the player with the most deaths |
+| `%deaths_top_value%` | Death count of the #1 player |
+
+`kill` and `death` are aliases for `kills` and `deaths` respectively and return identical values.
+
+## Building
 
 ```text
 ./gradlew build
 ```
 
-This build step will also run all checks and tests, making sure your code is clean.
-
-JARs can be found in `build/libs/`.
-
-## Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+The JAR is output to `build/libs/`.
