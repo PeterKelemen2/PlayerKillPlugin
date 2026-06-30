@@ -1,21 +1,13 @@
 package com.crimsonwarpedcraft.playerkillplugin;
 
-import com.crimsonwarpedcraft.cwcommons.config.ConfigManager;
-import com.crimsonwarpedcraft.cwcommons.store.DataStore;
-import com.crimsonwarpedcraft.cwcommons.store.KeySerializers;
-import com.crimsonwarpedcraft.cwcommons.store.Repository;
-import com.crimsonwarpedcraft.cwcommons.store.bukkit.AutoFlushTask;
 import com.crimsonwarpedcraft.playerkillplugin.config.PluginConfig;
 import com.crimsonwarpedcraft.playerkillplugin.data.PlayerStats;
 import com.crimsonwarpedcraft.playerkillplugin.listener.PlayerKillListener;
-import com.crimsonwarpedcraft.playerkillplugin.listener.PlayerSessionListener;
 import com.crimsonwarpedcraft.playerkillplugin.placeholder.KillStatsExpansion;
-import java.io.File;
+import com.crimsonwarpedcraft.playerkillplugin.store.StatsStore;
 import java.io.IOException;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -24,47 +16,27 @@ import org.bukkit.scheduler.BukkitTask;
  */
 public class PlayerKillPlugin extends JavaPlugin {
 
-  private DataStore store;
-  private BukkitTask autoFlushTask;
-  private Repository<UUID, PlayerStats> statsRepository;
+  private StatsStore statsStore;
+  private BukkitTask autoSaveTask;
   private final ConcurrentHashMap<UUID, PlayerStats> statsCache = new ConcurrentHashMap<>();
 
   @Override
   public void onEnable() {
     saveDefaultConfig();
-    PluginConfig config;
+    final PluginConfig config = new PluginConfig(getConfig());
 
-    try {
-      config = new ConfigManager()
-          .load(new File(getDataFolder(), "config.yml"), PluginConfig.class);
-    } catch (IOException | IllegalStateException e) {
-      getLogger().severe("Failed to load config: " + e.getMessage());
-      getServer().getPluginManager().disablePlugin(this);
-      return;
-    }
+    statsStore = new StatsStore(getDataFolder());
+    statsCache.putAll(statsStore.loadAll());
 
-    try {
-      store = DataStore.getLocalDataStore(getName(), getDataFolder());
-    } catch (IOException e) {
-      getLogger().severe("Failed to open data store: " + e.getMessage());
-      getServer().getPluginManager().disablePlugin(this);
-      return;
-    }
+    // Auto-save every 5 minutes (6000 ticks)
+    autoSaveTask = getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+      try {
+        statsStore.saveAll(new ConcurrentHashMap<>(statsCache));
+      } catch (IOException e) {
+        getLogger().warning("Auto-save failed: " + e.getMessage());
+      }
+    }, 6000L, 6000L);
 
-    autoFlushTask = new AutoFlushTask(store, this).start();
-    statsRepository =
-        store.repository("player-stats", PlayerStats.class, KeySerializers.forUuid());
-
-    // Pre-load stats for any online players (handles hot-reloads)
-    for (Player player : getServer().getOnlinePlayers()) {
-      UUID uuid = player.getUniqueId();
-      statsCache.putIfAbsent(uuid, new PlayerStats());
-      statsRepository.get(uuid)
-          .thenAccept(opt -> opt.ifPresent(stats -> statsCache.put(uuid, stats)));
-    }
-
-    getServer().getPluginManager()
-        .registerEvents(new PlayerSessionListener(statsCache, statsRepository), this);
     getServer().getPluginManager()
         .registerEvents(new PlayerKillListener(statsCache, config.isPvpDeathsOnly()), this);
 
@@ -77,21 +49,14 @@ public class PlayerKillPlugin extends JavaPlugin {
 
   @Override
   public void onDisable() {
-    if (autoFlushTask != null) {
-      autoFlushTask.cancel();
+    if (autoSaveTask != null) {
+      autoSaveTask.cancel();
     }
-
-    if (statsRepository != null) {
-      for (Map.Entry<UUID, PlayerStats> entry : statsCache.entrySet()) {
-        statsRepository.put(entry.getKey(), entry.getValue()).join();
-      }
-    }
-
-    if (store != null) {
+    if (statsStore != null) {
       try {
-        store.close();
-      } catch (Exception e) {
-        getLogger().severe("Failed to close data store: " + e.getMessage());
+        statsStore.saveAll(statsCache);
+      } catch (IOException e) {
+        getLogger().severe("Failed to save stats on shutdown: " + e.getMessage());
       }
     }
   }

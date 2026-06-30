@@ -1,19 +1,22 @@
 package com.crimsonwarpedcraft.playerkillplugin.config;
 
-import com.crimsonwarpedcraft.cwcommons.config.Config;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.bukkit.configuration.file.FileConfiguration;
 
 /**
  * Represents the plugin configuration loaded from config.yml.
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class PluginConfig implements Config {
+public class PluginConfig {
 
-  @JsonProperty("pvp-deaths-only")
-  private boolean pvpDeathsOnly = true;
+  private final boolean pvpDeathsOnly;
 
-  PluginConfig() {}
+  /**
+   * Creates a PluginConfig by reading values from the given Bukkit configuration.
+   *
+   * @param config the loaded Bukkit file configuration
+   */
+  public PluginConfig(FileConfiguration config) {
+    this.pvpDeathsOnly = config.getBoolean("pvp-deaths-only", true);
+  }
 
   PluginConfig(boolean pvpDeathsOnly) {
     this.pvpDeathsOnly = pvpDeathsOnly;

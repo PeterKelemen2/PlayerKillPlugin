@@ -27,7 +27,12 @@ version = (if (!hasProperty("ver")) {
     if (ver.startsWith("v") && !ver.lowercase().contains("-rc-")) base else "$base-SNAPSHOT"
 }).uppercase()
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(26)
+// Compile with Java 21 (available locally), targeting Java 17 bytecode for 1.18.2 server compat.
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(17)
+}
 
 repositories {
     maven {
@@ -51,14 +56,6 @@ repositories {
     mavenCentral()
 
     maven {
-        name = "jitpack"
-        url = uri("https://jitpack.io")
-        content {
-            includeGroup("com.github.CrimsonWarpedcraft")
-        }
-    }
-
-    maven {
         name = "placeholderapi"
         url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/")
         content {
@@ -70,24 +67,18 @@ repositories {
 val mockitoAgent = configurations.create("mockitoAgent")
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.1.2.build.72-stable")
+    compileOnly("io.papermc.paper:paper-api:1.18.2-R0.1-SNAPSHOT")
 
     // Code quality and unit testing. Not required for code functionality.
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.10.2")
     spotbugsPlugins("com.h3xstream.findsecbugs:findsecbugs-plugin:1.14.0")
     testCompileOnly("com.github.spotbugs:spotbugs-annotations:4.10.2")
-    testImplementation("io.papermc.paper:paper-api:26.1.2.build.72-stable")
+    testImplementation("io.papermc.paper:paper-api:1.18.2-R0.1-SNAPSHOT")
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.0")
 
     compileOnly("me.clip:placeholderapi:2.11.6")
     testImplementation("me.clip:placeholderapi:2.11.6")
-
-    // Shaded dependencies bundled into the plugin jar.
-    implementation("com.github.CrimsonWarpedcraft:cw-commons:v0.1.1")
-    // PluginConfig imports annotations from Jackson and Hibernate Validator directly.
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.22.0")
-    implementation("org.hibernate.validator:hibernate-validator:9.1.1.Final")
 
     testImplementation("org.mockito:mockito-core:5.23.0")
     mockitoAgent("org.mockito:mockito-core:5.23.0") { isTransitive = false }
@@ -135,24 +126,6 @@ tasks.withType<SpotBugsTask>().configureEach {
 val shadowJar = tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set("")
     mergeServiceFiles()
-    relocate("com.fasterxml", "${project.group}.fasterxml")
-    relocate("org.yaml.snakeyaml", "${project.group}.snakeyaml")
-    relocate("org.hibernate.validator", "${project.group}.hibernatevalidator")
-    relocate("jakarta.validation", "${project.group}.jakartavalidation")
-    relocate("org.jboss.logging", "${project.group}.jbosslogging")
-    // These libs load classes via reflection or SPI and must not be minimized
-    minimize {
-        exclude(dependency("com.fasterxml.jackson.core:.*:.*"))
-        exclude(dependency("com.fasterxml.jackson.dataformat:.*:.*"))
-        exclude(dependency("com.fasterxml:classmate:.*"))
-        exclude(dependency("org.hibernate.validator:.*:.*"))
-        exclude(dependency("jakarta.validation:.*:.*"))
-        exclude(dependency("org.yaml:snakeyaml:.*"))
-        exclude(dependency("org.jboss.logging:.*:.*"))
-        // cw-commons bundles the SQLite JDBC driver (loaded via SPI) inside its own jar;
-        // it never appears as a separate resolvable dependency, so it must be excluded by name.
-        exclude(dependency("com.github.CrimsonWarpedcraft:cw-commons:.*"))
-    }
 }
 
 tasks.jar {

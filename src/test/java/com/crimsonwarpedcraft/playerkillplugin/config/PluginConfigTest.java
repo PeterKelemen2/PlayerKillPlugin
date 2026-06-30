@@ -3,22 +3,27 @@ package com.crimsonwarpedcraft.playerkillplugin.config;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
 class PluginConfigTest {
 
   @Test
-  void defaultsToTrue() {
-    assertTrue(new PluginConfig().isPvpDeathsOnly());
+  void defaultsToTrueWhenKeyMissing() {
+    assertTrue(new PluginConfig(new YamlConfiguration()).isPvpDeathsOnly());
   }
 
   @Test
-  void acceptsFalse() {
-    assertFalse(new PluginConfig(false).isPvpDeathsOnly());
+  void readsFalseFromConfig() {
+    YamlConfiguration yaml = new YamlConfiguration();
+    yaml.set("pvp-deaths-only", false);
+    assertFalse(new PluginConfig(yaml).isPvpDeathsOnly());
   }
 
   @Test
-  void acceptsTrue() {
-    assertTrue(new PluginConfig(true).isPvpDeathsOnly());
+  void readsTrueFromConfig() {
+    YamlConfiguration yaml = new YamlConfiguration();
+    yaml.set("pvp-deaths-only", true);
+    assertTrue(new PluginConfig(yaml).isPvpDeathsOnly());
   }
 }
