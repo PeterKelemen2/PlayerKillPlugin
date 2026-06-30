@@ -21,12 +21,12 @@ jobs:
           cache: gradle
 
       - name: Build
-        run: ./gradlew build -Pver=${{ github.ref_name }}
+        run: ./gradlew release -Pver=${{ github.ref_name }}
 
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/libs/KillRatio.jar
+          files: build/libs/KillRatio*.jar
           draft: true
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-rc-') }}
